@@ -156,7 +156,12 @@ class AuthService:
     async def refresh(
         self, data: RefreshTokenRequest, user_agent: str | None = None, ip: str | None = None
     ) -> TokenResponse:
-        token_hash = self.refresh_repo.hash_token(data.refresh_token)
+        return await self.refresh_from_token(data.refresh_token, user_agent=user_agent, ip=ip)
+
+    async def refresh_from_token(
+        self, raw_token: str, user_agent: str | None = None, ip: str | None = None
+    ) -> TokenResponse:
+        token_hash = self.refresh_repo.hash_token(raw_token)
         stored = await self.refresh_repo.get_by_hash(token_hash)
         if not stored:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")

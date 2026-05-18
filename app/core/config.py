@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Cookies
+    COOKIE_DOMAIN: str | None = None  # None = current domain only
+    COOKIE_SECURE: bool = False  # True in production (HTTPS only)
+    COOKIE_SAMESITE: str = "lax"
+
     # Cloudflare R2
     R2_ACCOUNT_ID: str = ""
     R2_ACCESS_KEY_ID: str = ""

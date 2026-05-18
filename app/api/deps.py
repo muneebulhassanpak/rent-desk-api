@@ -2,14 +2,14 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 
 from app.core.security import decode_token
 from app.models.enums import UserRole
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 class CurrentUser:
@@ -23,10 +23,18 @@ class CurrentUser:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),  # noqa: B008
 ) -> CurrentUser:
+    # 1. Try httpOnly cookie first
+    token = request.cookies.get("access_token")
+    # 2. Fallback to Authorization header (mobile/API clients)
+    if not token and credentials:
+        token = credentials.credentials
+    if not token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authenticated")
     try:
-        payload = decode_token(credentials.credentials)
+        payload = decode_token(token)
         if payload.get("type") != "access":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
         return CurrentUser(
