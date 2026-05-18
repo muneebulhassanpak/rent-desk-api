@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import ARRAY, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,6 +41,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         "Property",
         secondary="manager_property_scopes",
         back_populates="managers",
+        primaryjoin="User.id == ManagerPropertyScope.manager_id",
+        secondaryjoin="Property.id == ManagerPropertyScope.property_id",
+        viewonly=True,
     )
 
 
@@ -65,7 +68,7 @@ class VendorProfile(TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     company_name: Mapped[str | None] = mapped_column(Text)
-    specialties: Mapped[list[str]] = mapped_column(default=[])
+    specialties: Mapped[list[str]] = mapped_column(ARRAY(Text), default=[])
     hourly_rate: Mapped[float | None] = mapped_column()
     flat_rate: Mapped[float | None] = mapped_column()
     license_number: Mapped[str | None] = mapped_column(Text)

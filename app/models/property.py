@@ -36,6 +36,9 @@ class Property(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         "User",
         secondary="manager_property_scopes",
         back_populates="managed_properties",
+        primaryjoin="Property.id == ManagerPropertyScope.property_id",
+        secondaryjoin="User.id == ManagerPropertyScope.manager_id",
+        viewonly=True,
     )
 
 
