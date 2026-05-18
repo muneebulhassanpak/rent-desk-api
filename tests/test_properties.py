@@ -21,7 +21,7 @@ async def _register_and_token(client):
     payload = _unique_payload()
     resp = await client.post(f"{AUTH}/register", json=payload)
     assert resp.status_code == 201
-    return resp.json()["access_token"]
+    return resp.cookies.get("access_token")
 
 
 def _auth(token):

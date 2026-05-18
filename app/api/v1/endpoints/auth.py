@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
@@ -13,7 +13,6 @@ from app.schemas.auth import (
     MessageResponse,
     RegisterRequest,
     ResetPasswordRequest,
-    TokenResponse,
     UserResponse,
 )
 from app.services.auth_service import AuthService
@@ -67,7 +66,7 @@ async def login(
     service = AuthService(db)
     result = await service.login(data, user_agent=ua, ip=ip)
     _set_auth_cookies(response, result.access_token, result.refresh_token)
-    return result
+    return AuthResponse(user=result.user)
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -79,7 +78,7 @@ async def register(
     service = AuthService(db)
     result = await service.register(data)
     _set_auth_cookies(response, result.access_token, result.refresh_token)
-    return result
+    return AuthResponse(user=result.user)
 
 
 @router.post("/magic-link", response_model=MessageResponse)
@@ -102,7 +101,7 @@ async def verify_magic_link(
     service = AuthService(db)
     result = await service.verify_magic_link(data, user_agent=ua, ip=ip)
     _set_auth_cookies(response, result.access_token, result.refresh_token)
-    return result
+    return AuthResponse(user=result.user)
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
@@ -126,22 +125,20 @@ async def reset_password(
     return result
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=MessageResponse)
 async def refresh(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),  # noqa: B008
-) -> TokenResponse:
+) -> MessageResponse:
     refresh_token = request.cookies.get(REFRESH_COOKIE)
     if not refresh_token:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
     ua, ip = _client_info(request)
     service = AuthService(db)
     result = await service.refresh_from_token(refresh_token, user_agent=ua, ip=ip)
     _set_auth_cookies(response, result.access_token, result.refresh_token)
-    return result
+    return MessageResponse(message="Tokens refreshed")
 
 
 @router.post("/logout", response_model=MessageResponse)

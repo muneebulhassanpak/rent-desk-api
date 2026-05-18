@@ -19,7 +19,7 @@ async def _register_and_token(client):
         json={"email": f"s-{u}@example.com", "password": "securepass123", "full_name": "Owner", "org_name": f"Org {u}"},
     )
     assert resp.status_code == 201
-    return resp.json()["access_token"]
+    return resp.cookies.get("access_token")
 
 
 def _auth(token):
