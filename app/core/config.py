@@ -37,14 +37,6 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
 
-    @field_validator("DATABASE_URL", mode="before")
-    @classmethod
-    def ensure_asyncpg_driver(cls, v: Any) -> str:
-        """Auto-convert postgresql:// to postgresql+asyncpg:// for Neon/asyncpg."""
-        if isinstance(v, str) and v.startswith("postgresql://"):
-            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return v
-
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Any) -> list[str]:
