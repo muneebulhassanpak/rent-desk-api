@@ -1,0 +1,11 @@
+#!/bin/bash
+# Enforce conventional commit format
+MSG=$(head -1 "$1")
+PATTERN='^(feat|fix|chore|refactor|docs|test|perf|ci|revert)(\([^)]+\))?: .{1,72}$'
+
+if ! echo "$MSG" | grep -qE "$PATTERN"; then
+  echo "ERROR: Commit message must follow: <type>(<scope>): <description>"
+  echo "  Types: feat fix chore refactor docs test perf ci revert"
+  echo "  Got: \"$MSG\""
+  exit 1
+fi
