@@ -1,0 +1,12 @@
+#!/bin/bash
+# Run ruff on staged Python files
+STAGED=$(git diff --cached --name-only --diff-filter=AM -- '*.py')
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+echo "$STAGED" | xargs .venv/bin/ruff check --fix
+echo "$STAGED" | xargs .venv/bin/ruff format
+
+# Re-stage any auto-fixed files
+echo "$STAGED" | xargs git add
