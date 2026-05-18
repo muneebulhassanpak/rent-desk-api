@@ -3,6 +3,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.enums import UserRole
+from app.utils.sanitize import SanitizedStr
 
 # -- Requests --
 
@@ -15,8 +16,8 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
-    full_name: str = Field(min_length=1)
-    org_name: str = Field(min_length=1)
+    full_name: SanitizedStr = Field(min_length=1)
+    org_name: SanitizedStr = Field(min_length=1)
 
 
 class MagicLinkRequest(BaseModel):

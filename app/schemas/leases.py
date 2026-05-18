@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import LeaseStatus
 from app.schemas.properties import PaginatedMeta
+from app.utils.sanitize import SanitizedStr
 
 
 class LeaseCreate(BaseModel):
@@ -17,7 +18,7 @@ class LeaseCreate(BaseModel):
     monthly_rent: Decimal = Field(..., gt=0)
     security_deposit: Decimal = Field(Decimal("0"), ge=0)
     payment_due_day: int = Field(1, ge=1, le=28)
-    notes: str | None = None
+    notes: SanitizedStr | None = None
 
     @model_validator(mode="after")
     def validate_dates_and_primary(self) -> "LeaseCreate":
@@ -36,7 +37,7 @@ class LeaseUpdate(BaseModel):
     monthly_rent: Decimal | None = Field(None, gt=0)
     security_deposit: Decimal | None = Field(None, ge=0)
     payment_due_day: int | None = Field(None, ge=1, le=28)
-    notes: str | None = None
+    notes: SanitizedStr | None = None
 
 
 class LeaseRenew(BaseModel):
@@ -56,8 +57,8 @@ class LeaseRenew(BaseModel):
 
 class LeaseTerminate(BaseModel):
     termination_date: date
-    reason: str | None = None
-    deposit_settlement_notes: str | None = None
+    reason: SanitizedStr | None = None
+    deposit_settlement_notes: SanitizedStr | None = None
 
 
 class LeaseTenantResponse(BaseModel):
