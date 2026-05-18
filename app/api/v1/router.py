@@ -1,12 +1,13 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth
+from app.api.v1.endpoints import auth, properties, units
 
 api_router = APIRouter(prefix="/api/v1")
 
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
-# api_router.include_router(properties.router, prefix="/properties", tags=["properties"])
-# api_router.include_router(units.router, prefix="/units", tags=["units"])
+api_router.include_router(properties.router, prefix="/properties", tags=["properties"])
+# Units router mounts at /api/v1 since it has /properties/{id}/units and /units/{id} paths
+api_router.include_router(units.router)
 # api_router.include_router(tenants.router, prefix="/tenants", tags=["tenants"])
 # api_router.include_router(leases.router, prefix="/leases", tags=["leases"])
 # api_router.include_router(payments.router, prefix="/payments", tags=["payments"])

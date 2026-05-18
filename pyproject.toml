@@ -30,6 +30,7 @@ ignore = [
 "tests/**/*.py" = ["S101", "ANN", "ARG"]
 "alembic/**/*.py" = ["ANN", "E501", "UP", "I", "F401"]
 "app/models/enums.py" = ["N815"]
+"app/repositories/**/*.py" = ["A003"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
