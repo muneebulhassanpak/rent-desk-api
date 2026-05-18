@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -18,19 +19,29 @@ from app.repositories.auth_token_repo import AuthTokenRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.auth import (
-    AuthResponse,
     ForgotPasswordRequest,
     LoginRequest,
     MagicLinkRequest,
     MagicLinkVerifyRequest,
     MessageResponse,
-    RefreshTokenRequest,
     RegisterRequest,
     ResetPasswordRequest,
-    TokenResponse,
     UserResponse,
 )
 from app.utils.email import send_magic_link_email, send_password_reset_email
+
+
+@dataclass
+class AuthResult:
+    user: UserResponse
+    access_token: str
+    refresh_token: str
+
+
+@dataclass
+class TokenResult:
+    access_token: str
+    refresh_token: str
 
 
 class AuthService:
@@ -40,7 +51,7 @@ class AuthService:
         self.refresh_repo = RefreshTokenRepository(db)
         self.auth_token_repo = AuthTokenRepository(db)
 
-    async def login(self, data: LoginRequest, user_agent: str | None = None, ip: str | None = None) -> AuthResponse:
+    async def login(self, data: LoginRequest, user_agent: str | None = None, ip: str | None = None) -> AuthResult:
         user = await self.user_repo.get_by_email_any_org(data.email)
         if not user or not user.password_hash or not verify_password(data.password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
@@ -52,7 +63,7 @@ class AuthService:
 
         return await self._issue_tokens(user, user_agent, ip)
 
-    async def register(self, data: RegisterRequest) -> AuthResponse:
+    async def register(self, data: RegisterRequest) -> AuthResult:
         # Only landlords can self-register; they create a new org
         from app.utils.slug import generate_slug
 
@@ -104,7 +115,7 @@ class AuthService:
 
     async def verify_magic_link(
         self, data: MagicLinkVerifyRequest, user_agent: str | None = None, ip: str | None = None
-    ) -> AuthResponse:
+    ) -> AuthResult:
         token_hash = self.auth_token_repo.hash_token(data.token)
         auth_token = await self.auth_token_repo.get_valid_token(token_hash, "magic_link")
         if not auth_token:
@@ -153,14 +164,9 @@ class AuthService:
 
         return MessageResponse(message="Password has been reset successfully")
 
-    async def refresh(
-        self, data: RefreshTokenRequest, user_agent: str | None = None, ip: str | None = None
-    ) -> TokenResponse:
-        return await self.refresh_from_token(data.refresh_token, user_agent=user_agent, ip=ip)
-
     async def refresh_from_token(
         self, raw_token: str, user_agent: str | None = None, ip: str | None = None
-    ) -> TokenResponse:
+    ) -> TokenResult:
         token_hash = self.refresh_repo.hash_token(raw_token)
         stored = await self.refresh_repo.get_by_hash(token_hash)
         if not stored:
@@ -184,7 +190,7 @@ class AuthService:
             ip_address=ip,
         )
 
-        return TokenResponse(access_token=access, refresh_token=raw_refresh)
+        return TokenResult(access_token=access, refresh_token=raw_refresh)
 
     async def logout(self, user_id: UUID) -> MessageResponse:
         await self.refresh_repo.revoke_all_for_user(user_id)
@@ -198,7 +204,7 @@ class AuthService:
 
     # -- Helpers --
 
-    async def _issue_tokens(self, user: User, user_agent: str | None = None, ip: str | None = None) -> AuthResponse:
+    async def _issue_tokens(self, user: User, user_agent: str | None = None, ip: str | None = None) -> AuthResult:
         property_ids = self._get_property_ids(user)
         access = create_access_token(user.id, user.org_id, user.role.value, property_ids)
         raw_refresh = create_refresh_token(user.id)
@@ -212,7 +218,7 @@ class AuthService:
             ip_address=ip,
         )
 
-        return AuthResponse(
+        return AuthResult(
             user=UserResponse.model_validate(user),
             access_token=access,
             refresh_token=raw_refresh,

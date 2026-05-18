@@ -1,4 +1,4 @@
-"""Sprint 1 — Auth endpoint tests (cookie-based auth)."""
+"""Sprint 1 — Auth endpoint tests (cookie-only auth)."""
 
 BASE = "/api/v1/auth"
 
@@ -24,18 +24,17 @@ class TestRegister:
         assert data["user"]["email"] == register_payload["email"]
         assert data["user"]["role"] == "landlord"
         assert data["user"]["full_name"] == register_payload["full_name"]
-        # Tokens in JSON body (backward compat)
-        assert "access_token" in data
-        assert "refresh_token" in data
-        # Tokens also set as httpOnly cookies
+        # No tokens in body
+        assert "access_token" not in data
+        assert "refresh_token" not in data
+        # Tokens only in cookies
         assert _get_access_token(resp) is not None
         assert _get_refresh_token(resp) is not None
 
     async def test_register_creates_org(self, client, register_payload):
         resp = await client.post(f"{BASE}/register", json=register_payload)
         assert resp.status_code == 201
-        data = resp.json()
-        assert data["user"]["org_id"] is not None
+        assert resp.json()["user"]["org_id"] is not None
 
     async def test_register_missing_fields(self, client):
         resp = await client.post(f"{BASE}/register", json={"email": "a@b.com"})
@@ -69,8 +68,7 @@ class TestLogin:
         assert resp.status_code == 200
         data = resp.json()
         assert data["user"]["email"] == register_payload["email"]
-        assert "access_token" in data
-        assert "refresh_token" in data
+        assert "access_token" not in data
         assert _get_access_token(resp) is not None
         assert _get_refresh_token(resp) is not None
 
@@ -100,7 +98,6 @@ class TestLogin:
 
 class TestMe:
     async def test_me_via_cookie(self, client, register_payload):
-        """Auth via httpOnly cookie (browser flow)."""
         reg = await client.post(f"{BASE}/register", json=register_payload)
         token = _get_access_token(reg)
         resp = await client.get(f"{BASE}/me", cookies={"access_token": token})
@@ -110,9 +107,9 @@ class TestMe:
         assert data["role"] == "landlord"
 
     async def test_me_via_header(self, client, register_payload):
-        """Auth via Authorization header (API/mobile flow)."""
+        """Authorization header still works for API/mobile clients."""
         reg = await client.post(f"{BASE}/register", json=register_payload)
-        token = reg.json()["access_token"]
+        token = _get_access_token(reg)
         resp = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert resp.json()["email"] == register_payload["email"]
@@ -135,9 +132,7 @@ class TestRefresh:
         refresh = _get_refresh_token(reg)
         resp = await client.post(f"{BASE}/refresh", cookies={"refresh_token": refresh})
         assert resp.status_code == 200
-        data = resp.json()
-        assert "access_token" in data
-        assert "refresh_token" in data
+        assert resp.json()["message"] == "Tokens refreshed"
         # New cookies set
         assert _get_access_token(resp) is not None
         assert _get_refresh_token(resp) is not None
@@ -172,7 +167,6 @@ class TestLogout:
         reg = await client.post(f"{BASE}/register", json=register_payload)
         token = _get_access_token(reg)
         resp = await client.post(f"{BASE}/logout", cookies={"access_token": token})
-        # Cookies should be cleared (max-age=0)
         for cookie_header in resp.headers.get_list("set-cookie"):
             if "access_token" in cookie_header or "refresh_token" in cookie_header:
                 assert "Max-Age=0" in cookie_header or "max-age=0" in cookie_header
@@ -181,9 +175,7 @@ class TestLogout:
         reg = await client.post(f"{BASE}/register", json=register_payload)
         access = _get_access_token(reg)
         refresh = _get_refresh_token(reg)
-        # Logout
         await client.post(f"{BASE}/logout", cookies={"access_token": access})
-        # Refresh should fail now
         resp = await client.post(f"{BASE}/refresh", cookies={"refresh_token": refresh})
         assert resp.status_code == 401
 
@@ -197,7 +189,6 @@ class TestLogout:
 
 class TestMagicLink:
     async def test_magic_link_request_returns_success(self, client, register_payload):
-        """Should always return success (even for non-existent emails) to prevent enumeration."""
         await client.post(f"{BASE}/register", json=register_payload)
         resp = await client.post(f"{BASE}/magic-link", json={"email": register_payload["email"]})
         assert resp.status_code == 200
@@ -205,7 +196,7 @@ class TestMagicLink:
 
     async def test_magic_link_nonexistent_email(self, client):
         resp = await client.post(f"{BASE}/magic-link", json={"email": "ghost@nowhere.com"})
-        assert resp.status_code == 200  # No enumeration
+        assert resp.status_code == 200
 
     async def test_magic_link_verify_invalid_token(self, client):
         resp = await client.post(f"{BASE}/magic-link/verify", json={"token": "bogus-token"})
@@ -224,7 +215,7 @@ class TestForgotPassword:
 
     async def test_forgot_password_nonexistent_email(self, client):
         resp = await client.post(f"{BASE}/forgot-password", json={"email": "ghost@nowhere.com"})
-        assert resp.status_code == 200  # No enumeration
+        assert resp.status_code == 200
 
 
 # -- Reset Password --

@@ -59,13 +59,6 @@ class UserResponse(BaseModel):
 
 class AuthResponse(BaseModel):
     user: UserResponse
-    access_token: str
-    refresh_token: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
 
 
 class MessageResponse(BaseModel):
