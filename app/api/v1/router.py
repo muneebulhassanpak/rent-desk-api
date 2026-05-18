@@ -1,9 +1,10 @@
 from fastapi import APIRouter
 
+from app.api.v1.endpoints import auth
+
 api_router = APIRouter(prefix="/api/v1")
 
-# Endpoint routers will be included here as they're built:
-# api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 # api_router.include_router(properties.router, prefix="/properties", tags=["properties"])
 # api_router.include_router(units.router, prefix="/units", tags=["units"])
 # api_router.include_router(tenants.router, prefix="/tenants", tags=["tenants"])
