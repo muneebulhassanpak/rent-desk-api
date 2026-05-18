@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import PropertyType, UnitStatus
+from app.utils.sanitize import SanitizedStr
 
 # -- Pagination --
 
@@ -25,31 +26,31 @@ class PaginatedMeta(BaseModel):
 
 
 class PropertyCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=200)
+    name: SanitizedStr = Field(..., min_length=1, max_length=200)
     type: PropertyType = PropertyType.SINGLE_FAMILY
-    address_line1: str = Field(..., min_length=1)
-    address_line2: str | None = None
-    city: str = Field(..., min_length=1)
-    state: str | None = None
-    postal_code: str | None = None
-    country: str = "US"
+    address_line1: SanitizedStr = Field(..., min_length=1)
+    address_line2: SanitizedStr | None = None
+    city: SanitizedStr = Field(..., min_length=1)
+    state: SanitizedStr | None = None
+    postal_code: SanitizedStr | None = None
+    country: SanitizedStr = "US"
     cover_photo_url: str | None = None
     year_built: int | None = Field(None, ge=1800, le=2100)
-    notes: str | None = None
+    notes: SanitizedStr | None = None
 
 
 class PropertyUpdate(BaseModel):
-    name: str | None = Field(None, min_length=1, max_length=200)
+    name: SanitizedStr | None = Field(None, min_length=1, max_length=200)
     type: PropertyType | None = None
-    address_line1: str | None = Field(None, min_length=1)
-    address_line2: str | None = None
-    city: str | None = Field(None, min_length=1)
-    state: str | None = None
-    postal_code: str | None = None
-    country: str | None = None
+    address_line1: SanitizedStr | None = Field(None, min_length=1)
+    address_line2: SanitizedStr | None = None
+    city: SanitizedStr | None = Field(None, min_length=1)
+    state: SanitizedStr | None = None
+    postal_code: SanitizedStr | None = None
+    country: SanitizedStr | None = None
     cover_photo_url: str | None = None
     year_built: int | None = Field(None, ge=1800, le=2100)
-    notes: str | None = None
+    notes: SanitizedStr | None = None
 
 
 class UnitSummary(BaseModel):
@@ -96,25 +97,25 @@ class PaginatedPropertyResponse(BaseModel):
 
 
 class UnitCreate(BaseModel):
-    label: str = Field(..., min_length=1, max_length=50)
+    label: SanitizedStr = Field(..., min_length=1, max_length=50)
     bedrooms: Decimal | None = Field(None, ge=0)
     bathrooms: Decimal | None = Field(None, ge=0)
     sqft: int | None = Field(None, ge=0)
     monthly_rent: Decimal = Field(Decimal("0"), ge=0)
     security_deposit: Decimal = Field(Decimal("0"), ge=0)
     status: UnitStatus = UnitStatus.VACANT
-    description: str | None = None
+    description: SanitizedStr | None = None
 
 
 class UnitUpdate(BaseModel):
-    label: str | None = Field(None, min_length=1, max_length=50)
+    label: SanitizedStr | None = Field(None, min_length=1, max_length=50)
     bedrooms: Decimal | None = Field(None, ge=0)
     bathrooms: Decimal | None = Field(None, ge=0)
     sqft: int | None = Field(None, ge=0)
     monthly_rent: Decimal | None = Field(None, ge=0)
     security_deposit: Decimal | None = Field(None, ge=0)
     status: UnitStatus | None = None
-    description: str | None = None
+    description: SanitizedStr | None = None
 
 
 class UnitResponse(BaseModel):

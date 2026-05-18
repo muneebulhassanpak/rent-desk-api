@@ -5,20 +5,21 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.enums import UserRole
 from app.schemas.properties import PaginatedMeta
+from app.utils.sanitize import SanitizedStr
 
 
 class TenantInvite(BaseModel):
     email: EmailStr
-    full_name: str = Field(..., min_length=1, max_length=200)
-    phone: str | None = None
+    full_name: SanitizedStr = Field(..., min_length=1, max_length=200)
+    phone: SanitizedStr | None = None
 
 
 class TenantUpdate(BaseModel):
-    full_name: str | None = Field(None, min_length=1, max_length=200)
-    phone: str | None = None
-    emergency_contact_name: str | None = None
-    emergency_contact_phone: str | None = None
-    notes: str | None = None
+    full_name: SanitizedStr | None = Field(None, min_length=1, max_length=200)
+    phone: SanitizedStr | None = None
+    emergency_contact_name: SanitizedStr | None = None
+    emergency_contact_phone: SanitizedStr | None = None
+    notes: SanitizedStr | None = None
 
 
 class TenantResponse(BaseModel):
