@@ -30,6 +30,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from app.utils.email import send_magic_link_email, send_password_reset_email
 
 
 class AuthService:
@@ -96,7 +97,7 @@ class AuthService:
                 token_hash=token_hash,
                 expires_at=datetime.now(UTC) + timedelta(minutes=15),
             )
-            # TODO: send email via Resend with the raw_token link
+            await send_magic_link_email(user.email, raw_token)
 
         # Always return success to prevent email enumeration
         return MessageResponse(message="If that email exists, a magic link has been sent")
@@ -130,7 +131,7 @@ class AuthService:
                 token_hash=token_hash,
                 expires_at=datetime.now(UTC) + timedelta(hours=1),
             )
-            # TODO: send password reset email via Resend
+            await send_password_reset_email(user.email, raw_token)
 
         return MessageResponse(message="If that email exists, a reset link has been sent")
 
