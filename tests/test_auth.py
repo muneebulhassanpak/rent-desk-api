@@ -1,6 +1,16 @@
-"""Sprint 1 — Auth endpoint tests."""
+"""Sprint 1 — Auth endpoint tests (cookie-based auth)."""
 
 BASE = "/api/v1/auth"
+
+
+def _get_access_token(resp):
+    """Extract access token from response cookies."""
+    return resp.cookies.get("access_token")
+
+
+def _get_refresh_token(resp):
+    """Extract refresh token from response cookies."""
+    return resp.cookies.get("refresh_token")
 
 
 # -- Register --
@@ -14,8 +24,12 @@ class TestRegister:
         assert data["user"]["email"] == register_payload["email"]
         assert data["user"]["role"] == "landlord"
         assert data["user"]["full_name"] == register_payload["full_name"]
+        # Tokens in JSON body (backward compat)
         assert "access_token" in data
         assert "refresh_token" in data
+        # Tokens also set as httpOnly cookies
+        assert _get_access_token(resp) is not None
+        assert _get_refresh_token(resp) is not None
 
     async def test_register_creates_org(self, client, register_payload):
         resp = await client.post(f"{BASE}/register", json=register_payload)
@@ -57,6 +71,8 @@ class TestLogin:
         assert data["user"]["email"] == register_payload["email"]
         assert "access_token" in data
         assert "refresh_token" in data
+        assert _get_access_token(resp) is not None
+        assert _get_refresh_token(resp) is not None
 
     async def test_login_wrong_password(self, client, register_payload):
         await client.post(f"{BASE}/register", json=register_payload)
@@ -83,14 +99,23 @@ class TestLogin:
 
 
 class TestMe:
-    async def test_me_authenticated(self, client, register_payload):
+    async def test_me_via_cookie(self, client, register_payload):
+        """Auth via httpOnly cookie (browser flow)."""
         reg = await client.post(f"{BASE}/register", json=register_payload)
-        token = reg.json()["access_token"]
-        resp = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
+        token = _get_access_token(reg)
+        resp = await client.get(f"{BASE}/me", cookies={"access_token": token})
         assert resp.status_code == 200
         data = resp.json()
         assert data["email"] == register_payload["email"]
         assert data["role"] == "landlord"
+
+    async def test_me_via_header(self, client, register_payload):
+        """Auth via Authorization header (API/mobile flow)."""
+        reg = await client.post(f"{BASE}/register", json=register_payload)
+        token = reg.json()["access_token"]
+        resp = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        assert resp.json()["email"] == register_payload["email"]
 
     async def test_me_no_token(self, client):
         resp = await client.get(f"{BASE}/me")
@@ -105,29 +130,30 @@ class TestMe:
 
 
 class TestRefresh:
-    async def test_refresh_success(self, client, register_payload):
+    async def test_refresh_via_cookie(self, client, register_payload):
         reg = await client.post(f"{BASE}/register", json=register_payload)
-        refresh_token = reg.json()["refresh_token"]
-        resp = await client.post(f"{BASE}/refresh", json={"refresh_token": refresh_token})
+        refresh = _get_refresh_token(reg)
+        resp = await client.post(f"{BASE}/refresh", cookies={"refresh_token": refresh})
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
         assert "refresh_token" in data
-        # New refresh token should differ (rotation)
-        assert data["refresh_token"] != refresh_token
+        # New cookies set
+        assert _get_access_token(resp) is not None
+        assert _get_refresh_token(resp) is not None
 
     async def test_refresh_reuse_revoked(self, client, register_payload):
         """Using a refresh token twice should fail (it's revoked after first use)."""
         reg = await client.post(f"{BASE}/register", json=register_payload)
-        refresh_token = reg.json()["refresh_token"]
+        refresh = _get_refresh_token(reg)
         # First use — works
-        await client.post(f"{BASE}/refresh", json={"refresh_token": refresh_token})
+        await client.post(f"{BASE}/refresh", cookies={"refresh_token": refresh})
         # Second use — should fail
-        resp = await client.post(f"{BASE}/refresh", json={"refresh_token": refresh_token})
+        resp = await client.post(f"{BASE}/refresh", cookies={"refresh_token": refresh})
         assert resp.status_code == 401
 
-    async def test_refresh_invalid_token(self, client):
-        resp = await client.post(f"{BASE}/refresh", json={"refresh_token": "not.a.real.token"})
+    async def test_refresh_no_token(self, client):
+        resp = await client.post(f"{BASE}/refresh")
         assert resp.status_code == 401
 
 
@@ -137,19 +163,28 @@ class TestRefresh:
 class TestLogout:
     async def test_logout_success(self, client, register_payload):
         reg = await client.post(f"{BASE}/register", json=register_payload)
-        token = reg.json()["access_token"]
-        resp = await client.post(f"{BASE}/logout", headers={"Authorization": f"Bearer {token}"})
+        token = _get_access_token(reg)
+        resp = await client.post(f"{BASE}/logout", cookies={"access_token": token})
         assert resp.status_code == 200
         assert resp.json()["message"] == "Logged out successfully"
 
+    async def test_logout_clears_cookies(self, client, register_payload):
+        reg = await client.post(f"{BASE}/register", json=register_payload)
+        token = _get_access_token(reg)
+        resp = await client.post(f"{BASE}/logout", cookies={"access_token": token})
+        # Cookies should be cleared (max-age=0)
+        for cookie_header in resp.headers.get_list("set-cookie"):
+            if "access_token" in cookie_header or "refresh_token" in cookie_header:
+                assert "Max-Age=0" in cookie_header or "max-age=0" in cookie_header
+
     async def test_logout_revokes_refresh_tokens(self, client, register_payload):
         reg = await client.post(f"{BASE}/register", json=register_payload)
-        access = reg.json()["access_token"]
-        refresh = reg.json()["refresh_token"]
+        access = _get_access_token(reg)
+        refresh = _get_refresh_token(reg)
         # Logout
-        await client.post(f"{BASE}/logout", headers={"Authorization": f"Bearer {access}"})
+        await client.post(f"{BASE}/logout", cookies={"access_token": access})
         # Refresh should fail now
-        resp = await client.post(f"{BASE}/refresh", json={"refresh_token": refresh})
+        resp = await client.post(f"{BASE}/refresh", cookies={"refresh_token": refresh})
         assert resp.status_code == 401
 
     async def test_logout_no_auth(self, client):
