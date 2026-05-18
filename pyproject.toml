@@ -1,0 +1,44 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "F",      # Pyflakes — unused imports, undefined names
+    "E", "W", # pycodestyle — style errors and warnings
+    "I",      # isort — import ordering
+    "N",      # pep8-naming — naming conventions
+    "UP",     # pyupgrade — modern Python syntax
+    "ANN",    # flake8-annotations — type annotation coverage
+    "S",      # flake8-bandit — security issues
+    "B",      # flake8-bugbear — common bugs
+    "A",      # flake8-builtins — shadowing builtins
+    "T20",    # flake8-print — no print()
+    "RET",    # flake8-return — return statement issues
+    "SIM",    # flake8-simplify — simplifiable code
+    "ARG",    # flake8-unused-arguments — unused function args
+    "PTH",    # flake8-use-pathlib — pathlib over os.path
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "ANN401",  # Allow Any in config validators (pydantic field_validator)
+    "ARG001",  # Allow unused args in FastAPI dependencies
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "ANN", "ARG"]
+"alembic/**/*.py" = ["ANN", "E501", "UP", "I", "F401"]
+"app/models/enums.py" = ["N815"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
