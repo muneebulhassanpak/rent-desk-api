@@ -12,7 +12,7 @@ from app.utils.sanitize import SanitizedStr
 
 
 class RecordPayment(BaseModel):
-    amount: Decimal = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0, le=Decimal("999999.99"))
     payment_date: date
     method: PaymentMethod
     reference: SanitizedStr | None = None
@@ -40,7 +40,6 @@ class PaymentResponse(BaseModel):
     paid_at: datetime | None
     method: PaymentMethod | None
     reference: str | None
-    stripe_payment_intent_id: str | None
     notes: str | None
     recorded_by: UUID | None
     status: PaymentStatus

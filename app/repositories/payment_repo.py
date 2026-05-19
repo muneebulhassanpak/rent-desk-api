@@ -57,8 +57,7 @@ class PaymentRepository:
 
     async def update(self, payment: RentPayment, data: dict) -> RentPayment:
         for key, value in data.items():
-            if value is not None:
-                setattr(payment, key, value)
+            setattr(payment, key, value)
         await self.db.flush()
         return payment
 
@@ -168,3 +167,8 @@ class PaymentRepository:
         stmt = select(Lease.property_id).where(Lease.id == lease_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def is_tenant_on_lease(self, user_id: UUID, lease_id: UUID) -> bool:
+        stmt = select(LeaseTenant.tenant_id).where(LeaseTenant.lease_id == lease_id, LeaseTenant.tenant_id == user_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none() is not None
