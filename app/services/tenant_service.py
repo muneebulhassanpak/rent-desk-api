@@ -9,6 +9,7 @@ from app.models.enums import UserRole
 from app.models.user import User
 from app.repositories.lease_repo import LeaseRepository
 from app.repositories.tenant_repo import TenantRepository
+from app.repositories.user_repo import UserRepository
 from app.schemas.properties import PaginatedMeta
 from app.schemas.tenants import (
     LeaseShortResponse,
@@ -24,6 +25,7 @@ class TenantService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.repo = TenantRepository(db)
+        self.user_repo = UserRepository(db)
         self.lease_repo = LeaseRepository(db)
 
     async def list_tenants(
@@ -46,9 +48,8 @@ class TenantService:
         )
 
     async def invite_tenant(self, user: CurrentUser, data: TenantInvite) -> TenantResponse:
-        existing = await self.repo.get_by_email(user.org_id, data.email)
-        if existing:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists in this org")
+        if await self.user_repo.email_exists(data.email):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
         tenant = User(
             org_id=user.org_id,
