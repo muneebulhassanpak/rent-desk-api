@@ -30,6 +30,9 @@ boto3==1.38.24
 # Payments
 stripe==12.2.0
 
+# PDF generation
+reportlab==4.4.0
+
 # HTTP client
 httpx==0.28.1
 

@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_role
 from app.db.session import get_db
 from app.models.enums import PropertyType, UserRole
+from app.schemas.payments import RentRollResponse
 from app.schemas.properties import (
     PaginatedPropertyResponse,
     PropertyCreate,
@@ -13,6 +15,7 @@ from app.schemas.properties import (
     PropertyResponse,
     PropertyUpdate,
 )
+from app.services.payment_service import PaymentService
 from app.services.property_service import PropertyService
 
 router = APIRouter()
@@ -74,3 +77,14 @@ async def archive_property(
 ) -> PropertyResponse:
     service = PropertyService(db)
     return await service.archive_property(user, property_id)
+
+
+@router.get("/{property_id}/rent-roll", response_model=RentRollResponse)
+async def rent_roll(
+    property_id: UUID,
+    month: date = Query(..., description="Month for rent roll (YYYY-MM-01)"),  # noqa: B008
+    user: CurrentUser = Depends(_landlord_or_manager),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> RentRollResponse:
+    service = PaymentService(db)
+    return await service.rent_roll(user, property_id, month)
