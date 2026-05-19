@@ -65,6 +65,11 @@ class AuthService:
 
     async def register(self, data: RegisterRequest) -> AuthResult:
         # Only landlords can self-register; they create a new org
+
+        # Email must be globally unique across all orgs
+        if await self.user_repo.email_exists(data.email):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
         from app.utils.slug import generate_slug
 
         slug = generate_slug(data.org_name)
@@ -75,11 +80,6 @@ class AuthService:
         )
         self.db.add(org)
         await self.db.flush()
-
-        # Check no existing user with this email in the new org
-        existing = await self.user_repo.get_by_email(org.id, data.email)
-        if existing:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
         user = User(
             org_id=org.id,
