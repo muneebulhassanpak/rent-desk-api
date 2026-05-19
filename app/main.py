@@ -35,6 +35,11 @@ app.add_middleware(
 app.include_router(api_router)
 
 
+@app.api_route("/ping", methods=["GET", "HEAD"])
+async def ping() -> dict[str, bool]:
+    return {"ok": True}
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
