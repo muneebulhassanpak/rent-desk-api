@@ -1,6 +1,17 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, leases, payments, photos, properties, tenants, tickets, units
+from app.api.v1.endpoints import (
+    activity_feed,
+    auth,
+    dashboards,
+    leases,
+    payments,
+    photos,
+    properties,
+    tenants,
+    tickets,
+    units,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -14,6 +25,8 @@ api_router.include_router(tenants.router, prefix="/tenants", tags=["tenants"])
 api_router.include_router(leases.router, prefix="/leases", tags=["leases"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(tickets.router, prefix="/tickets", tags=["tickets"])
+api_router.include_router(dashboards.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(activity_feed.router, prefix="/activity-feed", tags=["activity-feed"])
 # api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 # api_router.include_router(vendors.router, prefix="/vendors", tags=["vendors"])
 # api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
