@@ -138,6 +138,14 @@ class PaymentService:
         )
 
     async def lease_payments(self, user: CurrentUser, lease_id: UUID) -> list[PaymentResponse]:
+        if user.role == UserRole.TENANT:
+            on_lease = await self.repo.is_tenant_on_lease(user.user_id, lease_id)
+            if not on_lease:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your lease")
+        elif user.role == UserRole.MANAGER:
+            property_id = await self.repo.get_lease_property_id(lease_id)
+            if property_id and property_id not in user.property_ids:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not assigned to this property")
         payments = await self.repo.get_payments_for_lease(user.org_id, lease_id)
         return [PaymentResponse.model_validate(p) for p in payments]
 
@@ -279,11 +287,15 @@ class PaymentService:
         return buf.getvalue()
 
     async def _check_payment_access(self, user: CurrentUser, payment: object) -> None:
-        """Managers can only access payments for their assigned properties."""
+        """Managers: must be assigned to the property. Tenants: must be on the lease."""
         if user.role == UserRole.MANAGER:
             property_id = await self.repo.get_lease_property_id(payment.lease_id)
             if property_id and property_id not in user.property_ids:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not assigned to this property")
+        elif user.role == UserRole.TENANT:
+            on_lease = await self.repo.is_tenant_on_lease(user.user_id, payment.lease_id)
+            if not on_lease:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment")
 
     @staticmethod
     def _check_property_access(user: CurrentUser, property_id: UUID) -> None:
