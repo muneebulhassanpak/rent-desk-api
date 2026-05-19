@@ -2,6 +2,7 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_role
@@ -13,7 +14,6 @@ from app.schemas.payments import (
     PaymentDetailResponse,
     PaymentResponse,
     RecordPayment,
-    RentRollResponse,
     StripeCheckoutResponse,
     WaivePayment,
 )
@@ -113,28 +113,19 @@ async def create_stripe_checkout(
     return await service.create_stripe_checkout(user, payment_id)
 
 
-# ── Lease payments (tenant view) ────────────────────────────────
+# ── Receipt ──────────────────────────────────────────────────────
 
 
-@router.get("/lease/{lease_id}", response_model=list[PaymentResponse])
-async def lease_payments(
-    lease_id: UUID,
+@router.get("/{payment_id}/receipt")
+async def payment_receipt(
+    payment_id: UUID,
     user: CurrentUser = Depends(_any_authenticated),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
-) -> list[PaymentResponse]:
+) -> StreamingResponse:
     service = PaymentService(db)
-    return await service.lease_payments(user, lease_id)
-
-
-# ── Rent roll (per-property) ────────────────────────────────────
-
-
-@router.get("/rent-roll/{property_id}", response_model=RentRollResponse)
-async def rent_roll(
-    property_id: UUID,
-    month: date = Query(..., description="Month for rent roll (YYYY-MM-01)"),  # noqa: B008
-    user: CurrentUser = Depends(_landlord_or_manager),  # noqa: B008
-    db: AsyncSession = Depends(get_db),  # noqa: B008
-) -> RentRollResponse:
-    service = PaymentService(db)
-    return await service.rent_roll(user, property_id, month)
+    pdf_bytes = await service.generate_receipt(user, payment_id)
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=receipt-{payment_id}.pdf"},
+    )

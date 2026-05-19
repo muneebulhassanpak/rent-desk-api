@@ -15,11 +15,14 @@ from app.schemas.leases import (
     LeaseUpdate,
     PaginatedLeaseResponse,
 )
+from app.schemas.payments import PaymentResponse
 from app.services.lease_service import LeaseService
+from app.services.payment_service import PaymentService
 
 router = APIRouter()
 
 _landlord_or_manager = require_role(UserRole.LANDLORD, UserRole.MANAGER)
+_any_authenticated = require_role(UserRole.LANDLORD, UserRole.MANAGER, UserRole.TENANT)
 
 
 @router.get("", response_model=PaginatedLeaseResponse)
@@ -98,3 +101,13 @@ async def terminate_lease(
 ) -> LeaseResponse:
     service = LeaseService(db)
     return await service.terminate_lease(user, lease_id, data)
+
+
+@router.get("/{lease_id}/payments", response_model=list[PaymentResponse])
+async def lease_payments(
+    lease_id: UUID,
+    user: CurrentUser = Depends(_any_authenticated),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> list[PaymentResponse]:
+    service = PaymentService(db)
+    return await service.lease_payments(user, lease_id)
